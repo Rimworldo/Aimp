@@ -1349,30 +1349,68 @@ setInterval(function() {
 function connectTwitch() {
   const ws = new WebSocket('wss://irc-ws.chat.twitch.tv:443'); const rnd = Math.floor(Math.random()*99999);
   ws.onopen = function() { ws.send(`PASS oauth:justinfan${rnd}`); ws.send(`NICK justinfan${rnd}`); ws.send(`JOIN #${CHANNEL}`); ws.send('CAP REQ :twitch.tv/tags'); };
+  
   ws.onmessage = async function(e) {
-    const raw = e.data.trim(); if(raw.startsWith('PING')){ ws.send('PONG :tmi.twitch.tv'); return; }
-    let tags = {}; let messagePart = raw;
-    if(raw.startsWith('@')) { const tagEnd = raw.indexOf(' '); const tagStr = raw.substring(1, tagEnd); tagStr.split(';').forEach(function(t){ const p = t.split('='); tags[p[0]] = p[1] || ''; }); messagePart = raw.substring(tagEnd+1); }
-    const m = messagePart.match(/:(\w+)!\w+@\w+\.tmi\.twitch\.tv PRIVMSG #\w+ :(.*)/); if(!m) return;
-    const twitchUser = m[1].toLowerCase(); const msg = m[2].trim(); const rawColor = tags.color && tags.color.startsWith('#') ? tags.color : null; const color = rawColor || '#00aaff'; const isMod = tags.mod === '1' || (tags.badges && tags.badges.includes('moderator'));
-    if(isMod) twitchMods.add(twitchUser); if(!myTwitchName) myTwitchName = twitchUser;
-    if(rawColor) { twitchColors[twitchUser] = rawColor; localStorage.setItem('cimpTwitchColors', JSON.stringify(twitchColors)); }
-    if(!twitchUsers.has(twitchUser)) { twitchUsers.add(twitchUser); localStorage.setItem('cimpTwitchUsers', JSON.stringify(Array.from(twitchUsers))); }
+    // Correção: Divide as mensagens do WebSocket caso a Twitch envie várias de uma vez
+    const messages = e.data.trim().split('\r\n');
     
-    if(msg.toLowerCase().startsWith(CMD.toLowerCase()+' ')){
-      const parts = msg.slice(CMD.length).trim().split(' '); const action = parts[0].toLowerCase(); const arg = parts.slice(1).join(' ');
-      
-      if(action==='ban' && (isMod || isHost) && arg) { if(isHost) banUser(arg); else sendCmd('ban', {target: arg}); return; }
-      if(action==='unban' && (isMod || isHost) && arg) { if(isHost) unbanUser(arg); return; }
-      if(action==='skip'){ if(isMod || getUserPoints(twitchUser)>=50){ if(!isMod) spendPoints(twitchUser,50); if(isHost) nextVideo(); else sendCmd('skip',{user: twitchUser}); } return; }
-      if(action==='trocar' && getUserPoints(twitchUser)>=50){ spendPoints(twitchUser,50); if(isHost){ queue=queue.sort(function(){return Math.random()-0.5;}); renderQueue(); } else sendCmd('trocar',{user: twitchUser}); return; }
-      if(action==='gif' && arg && getUserPoints(twitchUser)>=20){ spendPoints(twitchUser,20); if(isHost) setQueueGif(arg); else sendCmd('gif',{user: twitchUser, gifName: arg}); return; }
-      await addToQueue(msg.slice(CMD.length).trim(), twitchUser, color, true);
-    } else { logChat(twitchUser, msg, false, color, isMod); }
+    for (let raw of messages) {
+        raw = raw.trim();
+        if (!raw) continue;
+        if (raw.startsWith('PING')) { ws.send('PONG :tmi.twitch.tv'); continue; }
+        
+        let tags = {}; 
+        let messagePart = raw;
+        
+        // Isola as tags de forma mais segura encontrando o espaço antes da máscara IRC
+        if (raw.startsWith('@')) { 
+            const tagEnd = raw.indexOf(' :'); 
+            if (tagEnd !== -1) {
+                const tagStr = raw.substring(1, tagEnd); 
+                tagStr.split(';').forEach(function(t){ const p = t.split('='); tags[p[0]] = p[1] || ''; }); 
+                messagePart = raw.substring(tagEnd + 1); 
+            }
+        }
+        
+        const m = messagePart.match(/:([\w]+)![\w]+@[\w]+\.tmi\.twitch\.tv PRIVMSG #[\w]+ :(.*)/); 
+        if (!m) continue;
+        
+        const twitchUser = m[1].toLowerCase(); 
+        const msg = m[2].trim(); 
+        const rawColor = tags.color && tags.color.startsWith('#') ? tags.color : null; 
+        const color = rawColor || '#00aaff'; 
+        const isMod = tags.mod === '1' || (tags.badges && tags.badges.includes('moderator'));
+        
+        if (isMod) twitchMods.add(twitchUser); 
+        if (!myTwitchName) myTwitchName = twitchUser;
+        if (rawColor) { twitchColors[twitchUser] = rawColor; localStorage.setItem('cimpTwitchColors', JSON.stringify(twitchColors)); }
+        if (!twitchUsers.has(twitchUser)) { twitchUsers.add(twitchUser); localStorage.setItem('cimpTwitchUsers', JSON.stringify(Array.from(twitchUsers))); }
+        
+        // Correção: Lógica de comandos mais robusta, sem exigir espaço obrigatório no startsWith
+        if (msg.toLowerCase().startsWith(CMD.toLowerCase())) {
+            const payload = msg.slice(CMD.length).trim();
+            const parts = payload.split(' '); 
+            const action = parts[0] ? parts[0].toLowerCase() : ''; 
+            const arg = parts.slice(1).join(' ');
+            
+            if (action === 'ban' && (isMod || isHost) && arg) { if(isHost) banUser(arg); else sendCmd('ban', {target: arg}); continue; }
+            if (action === 'unban' && (isMod || isHost) && arg) { if(isHost) unbanUser(arg); continue; }
+            if (action === 'skip') { if(isMod || getUserPoints(twitchUser)>=50){ if(!isMod) spendPoints(twitchUser,50); if(isHost) nextVideo(); else sendCmd('skip',{user: twitchUser}); } continue; }
+            if (action === 'trocar' && getUserPoints(twitchUser)>=50) { spendPoints(twitchUser,50); if(isHost){ queue=queue.sort(function(){return Math.random()-0.5;}); renderQueue(); } else sendCmd('trocar',{user: twitchUser}); continue; }
+            if (action === 'gif' && arg && getUserPoints(twitchUser)>=20) { spendPoints(twitchUser,20); if(isHost) setQueueGif(arg); else sendCmd('gif',{user: twitchUser, gifName: arg}); continue; }
+            
+            // Adiciona o link ou busca à fila se for um comando genérico
+            if (payload && !['ban', 'unban', 'skip', 'trocar', 'gif'].includes(action)) {
+                await addToQueue(payload, twitchUser, color, true);
+            }
+        } else { 
+            logChat(twitchUser, msg, false, color, isMod); 
+        }
+    }
   };
   ws.onclose = function() { setTimeout(connectTwitch, 5000); };
 }
-
+  
 function playPing() {
   if(!config.bpm) return;
   try{ const audioCtx = new (window.AudioContext||window.webkitAudioContext)(); const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); osc.frequency.setValueAtTime(800,audioCtx.currentTime); gain.gain.setValueAtTime(0.1,audioCtx.currentTime); osc.start(); osc.stop(audioCtx.currentTime+0.1); }catch(e){}
