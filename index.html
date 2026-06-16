@@ -1371,7 +1371,7 @@ function connectTwitch() {
   twitchWs = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
   
   twitchWs.onopen = function() { 
-    twitchWs.send(`PASS oauth:cew00vlmlespwmdjgdmbe8x2d5mo7r`); 
+    twitchWs.send(`PASS oauth:gwv6wwecnp6pii9otfnv3y3klg46u6`); 
     twitchWs.send(`NICK jonhcreator2`); 
     twitchWs.send(`JOIN #${CHANNEL}`); 
     twitchWs.send('CAP REQ :twitch.tv/tags'); 
@@ -1468,6 +1468,17 @@ function playPing() {
   try{ const audioCtx = new (window.AudioContext||window.webkitAudioContext)(); const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); osc.frequency.setValueAtTime(800,audioCtx.currentTime); gain.gain.setValueAtTime(0.1,audioCtx.currentTime); osc.start(); osc.stop(audioCtx.currentTime+0.1); }catch(e){}
 }
 
+function saveMessageToLog(msgData) {
+  let messageLog = JSON.parse(localStorage.getItem('cimpMessageLog') || '[]');
+  messageLog.push(msgData);
+  if(messageLog.length > 500) messageLog = messageLog.slice(-500);
+  localStorage.setItem('cimpMessageLog', JSON.stringify(messageLog));
+}
+
+function getMessageLog() {
+  return JSON.parse(localStorage.getItem('cimpMessageLog') || '[]');
+}
+
 function logChat(user, text, isCmd = false, color = '#00aaff', isMod = false) {
   const box = document.getElementById('chatbox');
   const points = getUserPoints(user);
@@ -1481,6 +1492,8 @@ function logChat(user, text, isCmd = false, color = '#00aaff', isMod = false) {
   box.appendChild(d);
   if(box.childNodes.length > 60) box.firstChild.remove();
   box.scrollTop = box.scrollHeight;
+  
+  saveMessageToLog({user: user, text: text, timestamp: Date.now(), color: color, isMod: isMod});
 }
 
 function logAdminAction(user, action) {
