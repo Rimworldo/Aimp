@@ -272,8 +272,8 @@ body::after{content:'';position:fixed;inset:0;opacity:.02;background-image:url("
 <div class="toasts" id="toasts"></div>
 
 <script>
-const TWITCH_CLIENT_ID = '7o46ook2j72oegbie1sd1wevif167x';
-const REDIRECT_URI = "https://rimworldo.github.io/Aimp/";
+const TWITCH_CLIENT_ID = 'lawe3wmm3jifj7vok0xmixm33pzh72';
+const REDIRECT_URI = "https://rimworldo.github.io/AIMP/";
 const ADMIN_USERS = ['aceboladoo_', 'bbeazinhaa', 'daenilajudante', 'daniloamorimking', 'gmoninho', 'nightbot', 'omonfredini', 'popolea', 'roninlinguica', 'saimo504'];
 
 const CHANNEL = 'aceboladoo_';
@@ -1347,30 +1347,127 @@ setInterval(function() {
 }, 500);
 
 function connectTwitch() {
-  const ws = new WebSocket('wss://irc-ws.chat.twitch.tv:443'); const rnd = Math.floor(Math.random()*99999);
-  ws.onopen = function() { ws.send(`PASS oauth:justinfan${rnd}`); ws.send(`NICK justinfan${rnd}`); ws.send(`JOIN #${CHANNEL}`); ws.send('CAP REQ :twitch.tv/tags'); };
-  ws.onmessage = async function(e) {
-    const raw = e.data.trim(); if(raw.startsWith('PING')){ ws.send('PONG :tmi.twitch.tv'); return; }
-    let tags = {}; let messagePart = raw;
-    if(raw.startsWith('@')) { const tagEnd = raw.indexOf(' '); const tagStr = raw.substring(1, tagEnd); tagStr.split(';').forEach(function(t){ const p = t.split('='); tags[p[0]] = p[1] || ''; }); messagePart = raw.substring(tagEnd+1); }
-    const m = messagePart.match(/:(\w+)!\w+@\w+\.tmi\.twitch\.tv PRIVMSG #\w+ :(.*)/); if(!m) return;
-    const twitchUser = m[1].toLowerCase(); const msg = m[2].trim(); const rawColor = tags.color && tags.color.startsWith('#') ? tags.color : null; const color = rawColor || '#6495ed'; const isMod = tags.mod === '1' || (tags.badges && tags.badges.includes('moderator'));
-    if(isMod) twitchMods.add(twitchUser); if(!myTwitchName) myTwitchName = twitchUser;
-    if(rawColor) { twitchColors[twitchUser] = rawColor; localStorage.setItem('aimpTwitchColors', JSON.stringify(twitchColors)); }
-    if(!twitchUsers.has(twitchUser)) { twitchUsers.add(twitchUser); localStorage.setItem('aimpTwitchUsers', JSON.stringify(Array.from(twitchUsers))); }
-    
-    if(msg.toLowerCase().startsWith(CMD.toLowerCase()+' ')){
-      const parts = msg.slice(CMD.length).trim().split(' '); const action = parts[0].toLowerCase(); const arg = parts.slice(1).join(' ');
-      
-      if(action==='ban' && (isMod || isHost) && arg) { if(isHost) banUser(arg); else sendCmd('ban', {target: arg}); return; }
-      if(action==='unban' && (isMod || isHost) && arg) { if(isHost) unbanUser(arg); return; }
-      if(action==='skip'){ if(isMod || getUserPoints(twitchUser)>=50){ if(!isMod) spendPoints(twitchUser,50); if(isHost) nextVideo(); else sendCmd('skip',{user: twitchUser}); } return; }
-      if(action==='trocar' && getUserPoints(twitchUser)>=50){ spendPoints(twitchUser,50); if(isHost){ queue=queue.sort(function(){return Math.random()-0.5;}); renderQueue(); } else sendCmd('trocar',{user: twitchUser}); return; }
-      if(action==='gif' && arg && getUserPoints(twitchUser)>=20){ spendPoints(twitchUser,20); if(isHost) setQueueGif(arg); else sendCmd('gif',{user: twitchUser, gifName: arg}); return; }
-      await addToQueue(msg.slice(CMD.length).trim(), twitchUser, color, true);
-    } else { logChat(twitchUser, msg, false, color, isMod); }
+  const ws = new WebSocket('wss://irc-ws.chat.twitch.tv:443'); 
+  const rnd = Math.floor(Math.random()*99999);
+  
+  ws.onopen = function() { 
+    console.log('Conectando ao IRC da Twitch...');
+    ws.send(`PASS oauth:justinfan${rnd}`); 
+    ws.send(`NICK justinfan${rnd}`); 
+    ws.send(`JOIN #aceboladoo_`); 
+    ws.send('CAP REQ :twitch.tv/tags');
   };
-  ws.onclose = function() { setTimeout(connectTwitch, 5000); };
+  
+  ws.onmessage = async function(e) {
+    const raw = e.data.trim();
+    
+    if(raw.startsWith('PING')) { 
+      ws.send('PONG :tmi.twitch.tv'); 
+      return; 
+    }
+    
+    let tags = {}; 
+    let messagePart = raw;
+    
+    // Parse tags
+    if(raw.startsWith('@')) { 
+      const tagEnd = raw.indexOf(' '); 
+      const tagStr = raw.substring(1, tagEnd); 
+      tagStr.split(';').forEach(function(t){ 
+        const p = t.split('='); 
+        tags[p[0]] = p[1] || ''; 
+      }); 
+      messagePart = raw.substring(tagEnd+1); 
+    }
+    
+    // Parse message
+    const m = messagePart.match(/:(\w+)!\w+@\w+\.tmi\.twitch\.tv PRIVMSG #(\w+) :(.*)/); 
+    if(!m) return;
+    
+    const twitchUser = m[1].toLowerCase(); 
+    const channel = m[2].toLowerCase();
+    const msg = m[3].trim();
+    const rawColor = tags.color && tags.color.startsWith('#') ? tags.color : null; 
+    const color = rawColor || '#6495ed'; 
+    const isMod = tags.mod === '1' || (tags.badges && tags.badges.includes('moderator'));
+    const isBroadcaster = tags.badges && tags.badges.includes('broadcaster');
+    
+    if(isMod) twitchMods.add(twitchUser); 
+    if(!myTwitchName) myTwitchName = twitchUser;
+    if(rawColor) { 
+      twitchColors[twitchUser] = rawColor; 
+      localStorage.setItem('aimpTwitchColors', JSON.stringify(twitchColors)); 
+    }
+    if(!twitchUsers.has(twitchUser)) { 
+      twitchUsers.add(twitchUser); 
+      localStorage.setItem('aimpTwitchUsers', JSON.stringify(Array.from(twitchUsers))); 
+    }
+    
+    // Check if message starts with command
+    if(msg.toLowerCase().startsWith(CMD.toLowerCase())){
+      const cmdContent = msg.slice(CMD.length).trim();
+      const parts = cmdContent.split(' ');
+      const action = parts[0].toLowerCase();
+      const arg = parts.slice(1).join(' ');
+      
+      console.log(`Comando recebido: ${CMD} ${action} ${arg} de ${twitchUser}`);
+      
+      if(action==='ban' && (isMod || isBroadcaster || isHost) && arg) { 
+        if(isHost) banUser(arg); 
+        else sendCmd('ban', {target: arg, user: twitchUser}); 
+        return; 
+      }
+      
+      if(action==='unban' && (isMod || isBroadcaster || isHost) && arg) { 
+        if(isHost) unbanUser(arg); 
+        return; 
+      }
+      
+      if(action==='skip'){ 
+        if(isMod || isBroadcaster || getUserPoints(twitchUser)>=50){ 
+          if(!isMod && !isBroadcaster) spendPoints(twitchUser,50); 
+          if(isHost) nextVideo(); 
+          else sendCmd('skip',{user: twitchUser}); 
+        } 
+        return; 
+      }
+      
+      if(action==='trocar'){ 
+        if(isMod || isBroadcaster || getUserPoints(twitchUser)>=50){ 
+          if(!isMod && !isBroadcaster) spendPoints(twitchUser,50); 
+          if(isHost){ 
+            queue=queue.sort(function(){return Math.random()-0.5;}); 
+            renderQueue(); 
+          } else sendCmd('trocar',{user: twitchUser}); 
+        } 
+        return; 
+      }
+      
+      if(action==='gif' && arg){ 
+        if(isMod || isBroadcaster || getUserPoints(twitchUser)>=20){ 
+          if(!isMod && !isBroadcaster) spendPoints(twitchUser,20); 
+          if(isHost) setQueueGif(arg); 
+          else sendCmd('gif',{user: twitchUser, gifName: arg}); 
+        } 
+        return; 
+      }
+      
+      // If no specific action, treat as add to queue
+      await addToQueue(cmdContent, twitchUser, color, true);
+    } else { 
+      // Regular chat message
+      logChat(twitchUser, msg, false, color, isMod); 
+    }
+  };
+  
+  ws.onerror = function(err) {
+    console.error('Erro no IRC:', err);
+  };
+  
+  ws.onclose = function() { 
+    console.log('Desconectado do IRC. Reconectando em 5s...');
+    setTimeout(connectTwitch, 5000); 
+  };
 }
 
 function playPing() {
