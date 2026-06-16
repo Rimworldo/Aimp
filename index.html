@@ -137,6 +137,7 @@ body.is-admin #ytFrame{pointer-events:auto}
 .u-btn.unban { border-color: #5de89a; color: #5de89a; }
 .u-btn.unban:hover { background: rgba(50,200,100,0.2); }
 
+/* --- INTEGRAÇÃO OBS: TELA CHEIA ABSOLUTA --- */
 .obs-btn { background: none; border: 1px solid rgba(255,255,255,0.07); color: var(--muted); padding: .3rem .6rem; border-radius: 6px; cursor: pointer; transition: .2s; font-size: 0.75rem; font-family: 'Space Mono'; display: flex; align-items: center; gap: 5px; }
 .obs-btn:hover { color: #fff; border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.05); }
 .obs-panel { position: absolute; top: calc(var(--hh) + 5px); right: 1.5rem; background: var(--surface); border: 1px solid var(--border); padding: 12px; border-radius: 8px; display: none; width: 240px; box-shadow: 0 8px 24px rgba(0,0,0,0.8); z-index: 400; flex-direction: column; gap: 8px; }
@@ -145,17 +146,47 @@ body.is-admin #ytFrame{pointer-events:auto}
 .obs-panel p { font-size: 0.65rem; color: var(--muted); line-height: 1.4; font-family: 'Space Mono'; }
 .obs-input { background: var(--bg); border: 1px solid var(--border); color: var(--muted); font-family: 'Space Mono'; font-size: 0.6rem; padding: 6px; width: 100%; border-radius: 4px; text-align: center; }
 
-body.obs-active { background: #000 !important; overflow: hidden; }
-body.obs-active > *:not(main) { display: none !important; }
-body.obs-active main > *:not(.theater) { display: none !important; }
-body.obs-active .theater > *:not(.theater-stage) { display: none !important; }
-body.obs-active .theater-stage > *:not(.player-wrap) { display: none !important; }
-body.obs-active main, body.obs-active .theater, body.obs-active .theater-stage, body.obs-active .player-wrap { 
-    display: block !important; padding: 0 !important; margin: 0 !important; border: none !important; 
-    position: static !important; width: 100vw !important; height: 100vh !important; border-radius: 0 !important; background: #000 !important; 
+/* MODO OBS ATIVADO */
+body.obs-active { background: #000 !important; overflow: hidden !important; }
+
+/* Esconde todas as interfaces por precaução */
+body.obs-active header, 
+body.obs-active .qside, 
+body.obs-active .apanel, 
+body.obs-active #publicControls, 
+body.obs-active .npbar, 
+body.obs-active .player-glow,
+body.obs-active .toasts,
+body.obs-active .ovl {
+    display: none !important;
 }
-body.obs-active #ytFrame, body.obs-active #rawAudio { 
-    width: 100vw !important; height: 100vh !important; display: block !important; z-index: 999999 !important; pointer-events: auto !important;
+
+/* Arranca o player do layout normal e joga na tela inteira */
+body.obs-active .player-wrap {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 999999 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    aspect-ratio: auto !important; /* Remove o travamento em 16:9 */
+    background: #000 !important;
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Garante que o iframe do YT ocupe todo o espaço e seja clicável */
+body.obs-active #ytFrame, 
+body.obs-active #rawAudio {
+    width: 100% !important;
+    height: 100% !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    pointer-events: auto !important; 
 }
   
 @media(max-width:760px){main{grid-template-columns:1fr}.qside{height:auto;position:static;max-height:420px}}
@@ -373,7 +404,6 @@ function sanitizeColor(c) {
     if(c.match(/^#[0-9a-fA-F]{3,8}$/) || c.match(/^[a-zA-Z]+$/)) return c;
     return '#00aaff';
 }
-
 function checkTwitchAuth() {
     const urlParams = new URLSearchParams(window.location.search);
     
@@ -382,18 +412,43 @@ function checkTwitchAuth() {
         document.body.classList.add('obs-active');
         myName = 'OBS_Live_' + Math.floor(Math.random() * 1000);
         
-        // Força o sistema a achar que já clicou em sincronizar
         clientSynced = true; 
         
-        // DELETA as telas de bloqueio para o YouTube poder tocar
+        // Remove as telas de bloqueio
         const loginOvl = document.getElementById('twitchLoginOvl');
         if (loginOvl) loginOvl.remove();
         const eover = document.getElementById('eover');
         if (eover) eover.remove();
         
+        // NOVIDADE: Ouve o seu clique no "Interagir" do OBS e acorda o YouTube
+        document.addEventListener('click', function() {
+            if (ytPlayer && typeof ytPlayer.playVideo === 'function') {
+                ytPlayer.playVideo(); // Força a saída da tela preta
+            }
+            const rawAudio = document.getElementById('rawAudio');
+            if (rawAudio) rawAudio.play().catch(function(){});
+        }, { once: true }); // Executa só uma vez
+        
         assignRolesAndStart();
         return; 
     }
+    // -------------------------
+
+    const hash = window.location.hash;
+    const storedToken = localStorage.getItem('cimpTwitchToken');
+
+    if (hash && hash.includes('access_token')) {
+        const params = new URLSearchParams(hash.substring(1));
+        const token = params.get('access_token');
+        window.location.hash = ''; 
+        localStorage.setItem('cimpTwitchToken', token);
+        fetchTwitchUser(token);
+    } else if (storedToken) {
+        fetchTwitchUser(storedToken);
+    } else {
+        document.getElementById('twitchLoginOvl').classList.add('open');
+    }
+}
     // -------------------------
 
     const hash = window.location.hash;
