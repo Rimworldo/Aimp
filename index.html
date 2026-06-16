@@ -658,10 +658,21 @@ function showCimps() {
   let html = '<b>Rank Cimps</b><br>';
   const sorted = Object.entries(cimpsPoints).sort(function(a,b){ return b[1]-a[1]; });
   sorted.forEach(function(item) { html += `${item[0]} — ${item[1]} Cimps<br>`; });
-  html += '<br><b>Comandos:</b><br>%cimp ajuda → Lista de comandos<br>%cimp give (quantidade) @usuario → Dá pontos<br>%cimp ban @usuario → Banir usuário (streamer/mods)<br>%cimp pontos / %cimp pontos @usuario → Ver pontos<br>%cimp skip → Pular música (-50 Cimps)<br>%cimp trocar → Embaralhar fila (-50 Cimps)<br>%cimp gif (nome) → Mudar GIF (-20 Cimps)<br>%cimp (url/busca) → Adiciona à fila';
+  
+  html += '<br><b>Comandos:</b><br>';
+  html += '%cimp ajuda → Lista de comandos<br><br>';
+  html += '%cimp give (quantidade) @usuario → Dá pontos<br><br>';
+  html += '%cimp ban @usuario → Banir usuário (streamer/mods)<br><br>';
+  html += '%cimp pontos / %cimp pontos @usuario → Ver pontos<br><br>';
+  html += '%cimp skip → Pular música (-50 Cimps)<br><br>';
+  html += '%cimp trocar → Embaralhar fila (-50 Cimps)<br><br>';
+  html += '%cimp gif (nome) → Mudar GIF (-20 Cimps)<br><br>';
+  html += '%cimp (url/busca) → Adiciona à fila';
+  
   document.getElementById('cimpsContent').innerHTML = html;
   document.getElementById('cimpsOvl').classList.add('open');
 }
+  
 document.getElementById('cimpsBtn').addEventListener('click', showCimps);
 document.getElementById('cimpsClose').addEventListener('click', function() { document.getElementById('cimpsOvl').classList.remove('open'); });
 
@@ -1446,7 +1457,7 @@ function connectTwitch() {
             const arg = parts.slice(1).join(' ');
             
             if (action === 'ajuda' || action === 'help') {
-                sendTwitchMessage(`@${twitchUser} Comandos: %cimp ajuda, %cimp give (quantidade) @usuario, %cimp ban @usuario, %cimp pontos [@usuario], %cimp skip, %cimp trocar, %cimp gif (nome), %cimp (url/busca)`);
+                sendTwitchMessage(`@${twitchUser} %cimp ajuda | %cimp give (quantidade) @usuario | %cimp ban @usuario | %cimp pontos @usuario | %cimp skip | %cimp trocar | %cimp gif (nome)`);
                 continue;
             }
             
@@ -1458,11 +1469,11 @@ function connectTwitch() {
                     continue;
                 }
                 if (target === twitchUser) {
-                    sendTwitchMessage(`@${twitchUser} você não pode dar pontos a si mesmo.`);
+                    sendTwitchMessage(`@${twitchUser} você não pode dar pontos a si mesmo besta.`);
                     continue;
                 }
                 if (getUserPoints(twitchUser) < amount) {
-                    sendTwitchMessage(`@${twitchUser} pontos insuficientes.`);
+                    sendTwitchMessage(`@${twitchUser} pobre.`);
                     continue;
                 }
                 spendPoints(twitchUser, amount);
@@ -1475,9 +1486,9 @@ function connectTwitch() {
                 if (isMod || isHost) {
                     const target = arg.replace('@', '').toLowerCase();
                     banUser(target);
-                    sendTwitchMessage(`@${twitchUser} banido @${target}`);
+                    sendTwitchMessage(`@${twitchUser} baniu @${target} anga `);
                 } else {
-                    sendTwitchMessage(`@${twitchUser} somente streamer/mod pode usar %cimp ban`);
+                    sendTwitchMessage(`@${twitchUser} seja mod primeiro`);
                 }
                 continue;
             }
@@ -1493,9 +1504,9 @@ function connectTwitch() {
                 if (isMod || getUserPoints(twitchUser) >= 50) {
                     if (!isMod) spendPoints(twitchUser, 50);
                     if (isHost) nextVideo(); else sendCmd('skip', {user: twitchUser});
-                    sendTwitchMessage(`@${twitchUser} skip realizado`);
+                    sendTwitchMessage(`@${twitchUser} pulou o video JAJA `);
                 } else {
-                    sendTwitchMessage(`@${twitchUser} Pontos insuficientes`);
+                    sendTwitchMessage(`@${twitchUser} Seja mais rico`);
                 }
                 continue;
             }
@@ -1506,7 +1517,7 @@ function connectTwitch() {
                     if (isHost) { queue = queue.sort(function(){return Math.random() - 0.5;}); renderQueue(); } else sendCmd('trocar', {user: twitchUser});
                     sendTwitchMessage(`@${twitchUser} fila trocada`);
                 } else {
-                    sendTwitchMessage(`@${twitchUser} Pontos insuficientes`);
+                    sendTwitchMessage(`@${twitchUser} Tenha mais dinheiros`);
                 }
                 continue;
             }
@@ -1515,9 +1526,9 @@ function connectTwitch() {
                 if (getUserPoints(twitchUser) >= 20) {
                     spendPoints(twitchUser, 20);
                     if (isHost) setQueueGif(arg); else sendCmd('gif', {user: twitchUser, gifName: arg});
-                    sendTwitchMessage(`@${twitchUser} GIF alterado para ${arg}`);
+                    sendTwitchMessage(`@${twitchUser} trocou o gif pra ${arg}`);
                 } else {
-                    sendTwitchMessage(`@${twitchUser} Pontos insuficientes`);
+                    sendTwitchMessage(`@${twitchUser} bixo pobre`);
                 }
                 continue;
             }
