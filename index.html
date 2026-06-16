@@ -137,16 +137,14 @@ body.is-admin #ytFrame{pointer-events:auto}
 .u-btn.unban { border-color: #5de89a; color: #5de89a; }
 .u-btn.unban:hover { background: rgba(50,200,100,0.2); }
 
-/* --- INTEGRAÇÃO OBS --- */
 .obs-btn { background: none; border: 1px solid rgba(255,255,255,0.07); color: var(--muted); padding: .3rem .6rem; border-radius: 6px; cursor: pointer; transition: .2s; font-size: 0.75rem; font-family: 'Space Mono'; display: flex; align-items: center; gap: 5px; }
 .obs-btn:hover { color: #fff; border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.05); }
-.obs-panel { position: absolute; top: calc(var(--hh) + 5px); right: 1.5rem; background: var(--surface); border: 1px solid var(--border); padding: 12px; border-radius: 8px; display: none; width: 240px; box-shadow: 0 8px 24px rgba(0,0,0,0.8); z-index: 400; flex-direction: column; gap: 8px; }
+.obs-panel { position: fixed; top: calc(var(--hh) + 5px); right: 1.5rem; background: var(--surface); border: 1px solid var(--border); padding: 12px; border-radius: 8px; display: none; width: 240px; box-shadow: 0 8px 24px rgba(0,0,0,0.8); z-index: 400; flex-direction: column; gap: 8px; }
 .obs-panel.show { display: flex; animation: fdIn 0.2s ease; }
 .obs-panel h3 { font-size: 0.8rem; color: #00aaff; font-family: 'Space Mono'; margin-bottom: 2px; }
 .obs-panel p { font-size: 0.65rem; color: var(--muted); line-height: 1.4; font-family: 'Space Mono'; }
 .obs-input { background: var(--bg); border: 1px solid var(--border); color: var(--muted); font-family: 'Space Mono'; font-size: 0.6rem; padding: 6px; width: 100%; border-radius: 4px; text-align: center; }
 
-/* Oculta tudo que não for o vídeo quando estiver no OBS */
 body.obs-active { background: transparent !important; overflow: hidden; }
 body.obs-active::after { display: none; }
 body.obs-active header, body.obs-active .qside, body.obs-active .apanel, body.obs-active #publicControls, body.obs-active .toasts { display: none !important; }
