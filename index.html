@@ -408,7 +408,6 @@ document.getElementById('logoutBtn').addEventListener('click', function() {
 });
 
 function assignRolesAndStart() {
-    console.log(`[DEBUG] Assignando roles para o usuário: ${myName}`);
     document.getElementById('userProfileTag').innerHTML = `<div class="tdot"></div>${myName}`;
     
     const PRIMARY_HOST = 'aceboladoo_';
@@ -659,7 +658,7 @@ function showCimps() {
   let html = '<b>Rank Cimps</b><br>';
   const sorted = Object.entries(cimpsPoints).sort(function(a,b){ return b[1]-a[1]; });
   sorted.forEach(function(item) { html += `${item[0]} — ${item[1]} Cimps<br>`; });
-  html += '<br><b>Comandos:</b><br>%simp skip → -50 Cimps<br>%simp trocar → -50 Cimps<br>%simp gif (nome) → -20 Cimps<br>%simp (url/busca) → Adiciona à fila';
+  html += '<br><b>Comandos:</b><br>%cimp ajuda → Lista de comandos<br>%cimp give (quantidade) @usuario → Dá pontos<br>%cimp ban @usuario → Banir usuário (streamer/mods)<br>%cimp pontos / %cimp pontos @usuario → Ver pontos<br>%cimp skip → Pular música (-50 Cimps)<br>%cimp trocar → Embaralhar fila (-50 Cimps)<br>%cimp gif (nome) → Mudar GIF (-20 Cimps)<br>%cimp (url/busca) → Adiciona à fila';
   document.getElementById('cimpsContent').innerHTML = html;
   document.getElementById('cimpsOvl').classList.add('open');
 }
@@ -733,12 +732,10 @@ function startAsClient() {
     }
     
     if (!twitchWs || twitchWs.readyState !== WebSocket.OPEN) {
-        console.log('[DEBUG] startAsClient: conectando ao Twitch para receber comandos.');
         toast('Conectando ao Twitch chat...', '');
         logChat('SISTEMA', '🔗 Conectando ao Twitch chat como cliente...', true, '#ffdd57');
         connectTwitch();
     } else {
-        console.log('[DEBUG] Twitch WebSocket já aberto para cliente.');
         logChat('SISTEMA', '✅ Twitch chat já conectado.', true, '#5de89a');
     }
     
@@ -750,14 +747,12 @@ function startAsClient() {
     });
     
     clientPeer.on('error', function(err) { 
-        console.error('[DEBUG] clientPeer error', err);
         p2pInitializing = false; 
         if (!isHost) setTimeout(startAsClient, 4000); 
     });
 }
 
 function setupHost() {
-  console.log('[DEBUG] setupHost iniciado. Conectando ao Twitch...');
   connectTwitch();
   hostPeer.on('connection', function(conn) {
       
@@ -1159,7 +1154,7 @@ async function addToQueue(rawUrl, user, color, fromTwitch) {
   if(!fromTwitch) toast(`Adicionado`, 'ok');
   
   if(fromTwitch) {
-      sendTwitchMessage(`@${user} adicionou o video (${title}) na posição (${queue.length})`);
+      sendTwitchMessage(`@${user} adicionou o video "${title}" na posição ${queue.length}`);
   }
   
   if (isHost && curIdx === -1) startPlayback(0); else renderQueue();
@@ -1277,12 +1272,8 @@ function toggleAdmin(state) {
 
 function sendTwitchMessage(msg) {
     if (twitchWs && twitchWs.readyState === WebSocket.OPEN) {
-        console.log(`[DEBUG SEND] Enviando ao Twitch: ${msg}`);
         twitchWs.send(`PRIVMSG #${CHANNEL} :${msg}`);
         logChat('BOT', msg, true, '#ffdd57');
-    } else {
-        console.error(`[DEBUG ERROR] WebSocket não está pronto. Status: ${twitchWs ? twitchWs.readyState : 'null'}`);
-        logChat('SISTEMA', `❌ Bot não conseguiu enviar resposta (WebSocket não pronto)`, true, '#ff7070');
     }
 }
 
@@ -1386,42 +1377,32 @@ setInterval(function() {
 }, 500);
 
 function connectTwitch() {
-  console.log('[DEBUG] Iniciando conexão com Twitch...');
   logChat('SISTEMA', '🔗 Conectando ao Twitch chat...', true, '#ffdd57');
   twitchWs = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
   
   twitchWs.onopen = function() { 
-    console.log('[DEBUG] WebSocket aberto. Enviando credenciais...');
     logChat('SISTEMA', '✅ WebSocket conectado. Enviando credenciais...', true, '#5de89a');
     twitchWs.send(`PASS oauth:gwv6wwecnp6pii9otfnv3y3klg46u6`); 
     twitchWs.send(`NICK jonhcreator2`); 
     twitchWs.send(`JOIN #${CHANNEL}`); 
     twitchWs.send('CAP REQ :twitch.tv/tags'); 
     twitchWs.send('CAP REQ :twitch.tv/commands');
-    console.log(`[DEBUG] Enviado: PASS, NICK jonhcreator2, JOIN #${CHANNEL}`);
   };
   
   twitchWs.onerror = function(err) {
-    console.error('[DEBUG ERROR] Twitch websocket error', err);
-    logChat('SISTEMA', `❌ Erro Twitch websocket. Veja console.`, true, '#ff7070');
+    logChat('SISTEMA', `❌ Erro Twitch websocket. Conexão falhou.`, true, '#ff7070');
     twitchWs = null;
   };
   
   twitchWs.onmessage = async function(e) {
     const messages = e.data.trim().split('\r\n');
-    console.log(`[DEBUG] Recebido ${messages.length} mensagens`);
     
     for (let raw of messages) {
         raw = raw.trim();
         if (!raw) continue;
         
-        // Log raw IRC messages for debugging
-        if (raw.includes('PRIVMSG') || raw.includes('NOTICE')) {
-          console.log('[DEBUG IRC]', raw.substring(0, 150));
-        }
         
         if (raw.startsWith('PING')) { 
-          console.log('[DEBUG] PING recebido, respondendo PONG');
           twitchWs.send('PONG :tmi.twitch.tv'); 
           continue; 
         }
@@ -1441,7 +1422,6 @@ function connectTwitch() {
         const m = messagePart.match(/:([\w]+)![\w]+@[\w]+\.tmi\.twitch\.tv PRIVMSG #[\w]+ :(.*)/); 
         if (!m) {
           if (raw.includes('aceboladoo_') && raw.includes('NOTICE')) {
-            console.log('[DEBUG] NOTICE recebido:', raw);
             logChat('SISTEMA', '⚠️ Aviso do servidor Twitch recebido', true, '#ffb347');
           }
           continue;
@@ -1453,83 +1433,106 @@ function connectTwitch() {
         const color = rawColor || '#00aaff'; 
         const isMod = tags.mod === '1' || (tags.badges && tags.badges.includes('moderator'));
         
-        console.log(`[DEBUG CHAT] ${twitchUser}: ${msg} | mod=${isMod}`);
         
         if (isMod) twitchMods.add(twitchUser); 
         if (!myTwitchName) myTwitchName = twitchUser;
         if (rawColor) { twitchColors[twitchUser] = rawColor; localStorage.setItem('cimpTwitchColors', JSON.stringify(twitchColors)); }
         if (!twitchUsers.has(twitchUser)) { twitchUsers.add(twitchUser); localStorage.setItem('cimpTwitchUsers', JSON.stringify(Array.from(twitchUsers))); }
         
-        if (msg.toLowerCase().startsWith('%simp') || msg.toLowerCase().startsWith('%cimp')) {
-            const currentCmd = msg.toLowerCase().startsWith('%simp') ? '%simp' : '%cimp';
-            const payload = msg.slice(currentCmd.length).trim();
-            const parts = payload.split(' '); 
-            const action = parts[0] ? parts[0].toLowerCase() : ''; 
+        if (msg.toLowerCase().startsWith('%cimp')) {
+            const payload = msg.slice(5).trim();
+            const parts = payload.split(' ');
+            const action = parts[0] ? parts[0].toLowerCase() : '';
             const arg = parts.slice(1).join(' ');
             
-            console.log(`[DEBUG CMD] Comando detectado: ${currentCmd} | ação: ${action} | arg: ${arg}`);
-            logChat('SISTEMA', `🎮 ${twitchUser} usou comando: ${currentCmd} ${action}`, true, '#ffb347');
-            
-            if (action === 'ban' && (isMod || isHost) && arg) { 
-              console.log(`[DEBUG] BAN: ${arg}`);
-              if(isHost) banUser(arg); else sendCmd('ban', {target: arg}); 
-              continue; 
-            }
-            if (action === 'unban' && (isMod || isHost) && arg) { 
-              console.log(`[DEBUG] UNBAN: ${arg}`);
-              if(isHost) unbanUser(arg); 
-              continue; 
+            if (action === 'ajuda' || action === 'help') {
+                sendTwitchMessage(`@${twitchUser} Comandos: %cimp ajuda, %cimp give (quantidade) @usuario, %cimp ban @usuario, %cimp pontos [@usuario], %cimp skip, %cimp trocar, %cimp gif (nome), %cimp (url/busca)`);
+                continue;
             }
             
-            if (action === 'skip') { 
-                console.log(`[DEBUG SKIP] Pontos: ${getUserPoints(twitchUser)}, isMod: ${isMod}`);
-                if(isMod || getUserPoints(twitchUser) >= 50){ 
-                    if(!isMod) spendPoints(twitchUser, 50); 
-                    if(isHost) nextVideo(); else sendCmd('skip', {user: twitchUser}); 
-                    sendTwitchMessage(`@${twitchUser} deu skip na musica`);
-                } else {
-                    sendTwitchMessage(`@${twitchUser} Pontos insuficientes (tem ${getUserPoints(twitchUser)}, precisa 50)`);
-                } 
-                continue; 
-            }
-            
-            if (action === 'trocar') { 
-                console.log(`[DEBUG TROCAR] Pontos: ${getUserPoints(twitchUser)}`);
-                if(getUserPoints(twitchUser) >= 50) {
-                    spendPoints(twitchUser, 50); 
-                    if(isHost){ queue = queue.sort(function(){return Math.random() - 0.5;}); renderQueue(); } else sendCmd('trocar', {user: twitchUser}); 
-                    sendTwitchMessage(`@${twitchUser} trocou a fila`);
-                } else {
-                    sendTwitchMessage(`@${twitchUser} Pontos insuficientes (tem ${getUserPoints(twitchUser)}, precisa 50)`);
+            if (action === 'give' && arg) {
+                const amount = parseInt(parts[1], 10);
+                const target = parts.slice(2).join(' ').replace('@', '').toLowerCase();
+                if (!target || isNaN(amount) || amount <= 0) {
+                    sendTwitchMessage(`@${twitchUser} Uso: %cimp give (quantidade) @usuario`);
+                    continue;
                 }
-                continue; 
-            }
-            
-            if (action === 'gif' && arg) { 
-                console.log(`[DEBUG GIF] Pontos: ${getUserPoints(twitchUser)}, termo: ${arg}`);
-                if(getUserPoints(twitchUser) >= 20) {
-                    spendPoints(twitchUser, 20); 
-                    if(isHost) setQueueGif(arg); else sendCmd('gif', {user: twitchUser, gifName: arg}); 
-                    sendTwitchMessage(`@${twitchUser} mudou o GIF`);
-                } else {
-                    sendTwitchMessage(`@${twitchUser} Pontos insuficientes (tem ${getUserPoints(twitchUser)}, precisa 20)`);
+                if (target === twitchUser) {
+                    sendTwitchMessage(`@${twitchUser} você não pode dar pontos a si mesmo.`);
+                    continue;
                 }
-                continue; 
+                if (getUserPoints(twitchUser) < amount) {
+                    sendTwitchMessage(`@${twitchUser} pontos insuficientes.`);
+                    continue;
+                }
+                spendPoints(twitchUser, amount);
+                addPoints(target, amount);
+                sendTwitchMessage(`@${twitchUser} deu ${amount} Cimps para @${target}`);
+                continue;
             }
             
-            if (payload && !['ban', 'unban', 'skip', 'trocar', 'gif'].includes(action)) {
-                console.log(`[DEBUG ADD] Adicionando à fila: ${payload}`);
-                logChat('SISTEMA', `📺 ${twitchUser} adicionando vídeo: ${payload}`, true, '#00aaff');
+            if (action === 'ban' && arg) {
+                if (isMod || isHost) {
+                    const target = arg.replace('@', '').toLowerCase();
+                    banUser(target);
+                    sendTwitchMessage(`@${twitchUser} banido @${target}`);
+                } else {
+                    sendTwitchMessage(`@${twitchUser} somente streamer/mod pode usar %cimp ban`);
+                }
+                continue;
+            }
+            
+            if (action === 'pontos') {
+                const target = arg ? arg.replace('@', '').toLowerCase() : twitchUser;
+                const amount = getUserPoints(target);
+                sendTwitchMessage(`@${twitchUser} ${target} tem ${amount} Cimps`);
+                continue;
+            }
+            
+            if (action === 'skip') {
+                if (isMod || getUserPoints(twitchUser) >= 50) {
+                    if (!isMod) spendPoints(twitchUser, 50);
+                    if (isHost) nextVideo(); else sendCmd('skip', {user: twitchUser});
+                    sendTwitchMessage(`@${twitchUser} skip realizado`);
+                } else {
+                    sendTwitchMessage(`@${twitchUser} Pontos insuficientes`);
+                }
+                continue;
+            }
+            
+            if (action === 'trocar') {
+                if (getUserPoints(twitchUser) >= 50) {
+                    spendPoints(twitchUser, 50);
+                    if (isHost) { queue = queue.sort(function(){return Math.random() - 0.5;}); renderQueue(); } else sendCmd('trocar', {user: twitchUser});
+                    sendTwitchMessage(`@${twitchUser} fila trocada`);
+                } else {
+                    sendTwitchMessage(`@${twitchUser} Pontos insuficientes`);
+                }
+                continue;
+            }
+            
+            if (action === 'gif' && arg) {
+                if (getUserPoints(twitchUser) >= 20) {
+                    spendPoints(twitchUser, 20);
+                    if (isHost) setQueueGif(arg); else sendCmd('gif', {user: twitchUser, gifName: arg});
+                    sendTwitchMessage(`@${twitchUser} GIF alterado para ${arg}`);
+                } else {
+                    sendTwitchMessage(`@${twitchUser} Pontos insuficientes`);
+                }
+                continue;
+            }
+            
+            if (payload && !['ajuda','help','give','ban','pontos','skip','trocar','gif'].includes(action)) {
                 await addToQueue(payload, twitchUser, color, true);
+                continue;
             }
-        } else { 
-            logChat(twitchUser, msg, false, color, isMod); 
+        } else {
+            logChat(twitchUser, msg, false, color, isMod);
         }
     }
   };
   
   twitchWs.onclose = function(event) { 
-    console.log('[DEBUG] WebSocket fechado. Reconectando em 5s...', event);
     logChat('SISTEMA', `🔴 Twitch chat desconectado (code ${event.code}). Reconectando em 5s...`, true, '#ff7070');
     twitchWs = null;
     setTimeout(connectTwitch, 5000); 
@@ -1542,15 +1545,9 @@ function playPing() {
   try{ const audioCtx = new (window.AudioContext||window.webkitAudioContext)(); const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); osc.frequency.setValueAtTime(800,audioCtx.currentTime); gain.gain.setValueAtTime(0.1,audioCtx.currentTime); osc.start(); osc.stop(audioCtx.currentTime+0.1); }catch(e){}
 }
 
-function saveMessageToLog(msgData) {
-  let messageLog = JSON.parse(localStorage.getItem('cimpMessageLog') || '[]');
-  messageLog.push(msgData);
-  if(messageLog.length > 500) messageLog = messageLog.slice(-500);
-  localStorage.setItem('cimpMessageLog', JSON.stringify(messageLog));
-}
-
-function getMessageLog() {
-  return JSON.parse(localStorage.getItem('cimpMessageLog') || '[]');
+function playPing() {
+  if(!config.bpm) return;
+  try{ const audioCtx = new (window.AudioContext||window.webkitAudioContext)(); const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); osc.frequency.setValueAtTime(800,audioCtx.currentTime); gain.gain.setValueAtTime(0.1,audioCtx.currentTime); osc.start(); osc.stop(audioCtx.currentTime+0.1); }catch(e){}
 }
 
 function logChat(user, text, isCmd = false, color = '#00aaff', isMod = false) {
@@ -1564,10 +1561,11 @@ function logChat(user, text, isCmd = false, color = '#00aaff', isMod = false) {
   d.innerHTML = `<span class="cmu" style="color:${safeColor}">${esc(user)}${modTag} <span style="color:#f88529"> (${points} Cimps)</span></span>: <span class="cmt">${esc(text)}</span>`;
   
   box.appendChild(d);
-  if(box.childNodes.length > 60) box.firstChild.remove();
   box.scrollTop = box.scrollHeight;
-  
-  saveMessageToLog({user: user, text: text, timestamp: Date.now(), color: color, isMod: isMod});
+  if(box.childNodes.length > 60) box.firstChild.remove();
+  setTimeout(function() {
+      if (d.parentNode) d.parentNode.removeChild(d);
+  }, 10000);
 }
 
 function logAdminAction(user, action) {
