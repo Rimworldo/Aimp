@@ -1409,7 +1409,7 @@ function connectTwitch() {
   
   twitchWs.onopen = function() { 
     logChat('SISTEMA', '✅ WebSocket conectado. Enviando credenciais...', true, '#5de89a');
-    twitchWs.send(`PASS oauth:gwv6wwecnp6pii9otfnv3y3klg46u6`); 
+    twitchWs.send(`PASS oauth:sntgdbfct7x509vz12xez73n3b5myo`); 
     twitchWs.send(`NICK jonhcreator2`); 
     twitchWs.send(`JOIN #${CHANNEL}`); 
     twitchWs.send('CAP REQ :twitch.tv/tags'); 
