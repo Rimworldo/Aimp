@@ -1587,7 +1587,7 @@
                 html += "<br><b>Comandos:</b><br>";
                 html += "%cimp ajuda → Lista de comandos<br><br>";
                 html += "%cimp give (quantidade) @usuario → Dá pontos<br><br>";
-                html += "%cimp ban @usuario → Banir usuário (streamer/mods)<br><br>";
+                html += "%cimp baby ban ban @usuario → Banir usuário (streamer/mods)<br><br>";
                 html += "%cimp pontos / %cimp pontos @usuario → Ver pontos<br><br>";
                 html += "%cimp skip → Pular música (-50 Cimps)<br><br>";
                 html += "%cimp trocar → Embaralhar fila (-50 Cimps)<br><br>";
@@ -2527,7 +2527,7 @@
                             const arg = parts.slice(1).join(" ");
 
                             if (action === "ajuda" || action === "help") {
-                                sendTwitchMessage(`@${twitchUser} %cimp ajuda | %cimp give (quantidade) @usuario | %cimp ban @usuario | %cimp pontos @usuario | %cimp skip | %cimp trocar | %cimp gif (nome) | %cimp tocando | %cimp lista | %cimp (link/busca)
+                                sendTwitchMessage(`@${twitchUser} %cimp ajuda | %cimp give (quantidade) @usuario | %cimp pontos @usuario | %cimp skip | %cimp trocar | %cimp gif (nome) | %cimp tocando | %cimp lista | %cimp (link/busca)
 
 `);
                                 continue;
